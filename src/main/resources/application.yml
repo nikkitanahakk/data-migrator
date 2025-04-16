@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: clickhouse-ingestion
+  security:
+    jwt:
+      secret: ${JWT_SECRET:your-secret-key}
+      expiration: 86400000 # 24 hours
+
+clickhouse:
+  host: localhost
+  port: 9000
+  database: default
+  username: default
+  password: default
+
+file:
+  upload:
+    directory: ./uploads
+    max-size: 10MB 
