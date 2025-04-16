@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Button, Typography, Stack } from '@mui/material';
-import { DestinationType } from '../types/index.ts';
+import { DestinationType } from '../types';
 
 interface DestinationSelectionProps {
     onSelect: (type: DestinationType) => void;

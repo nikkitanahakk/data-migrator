@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Box,
     Typography,
@@ -10,148 +10,137 @@ import {
     Alert,
     CircularProgress,
     Divider,
-    Stack
+    Stack,
+    List,
+    ListItem,
+    ListItemText,
+    ListItemButton,
+    ListItemIcon
 } from '@mui/material';
-import { SourceType, ClickHouseConfig, FileData, ColumnInfo } from '../types/index.ts';
-import { getTableSchema } from '../services/api.ts';
+import { SourceType, ClickHouseConfig, FileData, ColumnInfo } from '../types';
+import { getTableSchema } from '../services/api';
+import axios from 'axios';
 
 interface ColumnSelectionProps {
-    sourceType: SourceType;
-    clickHouseConfig?: ClickHouseConfig;
-    fileData?: FileData;
-    onSelect: (columns: string[]) => void;
+    config: any;
+    tableName: string;
+    onColumnsSelect: (columns: string[]) => void;
 }
 
-const ColumnSelection: React.FC<ColumnSelectionProps> = ({
-    sourceType,
-    clickHouseConfig,
-    fileData,
-    onSelect
-}) => {
-    const [columns, setColumns] = useState<ColumnInfo[]>([]);
+const ColumnSelection = ({ config, tableName, onColumnsSelect }: ColumnSelectionProps) => {
+    const [columns, setColumns] = useState<string[]>([]);
     const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const onColumnsSelectRef = useRef(onColumnsSelect);
 
     useEffect(() => {
-        const loadColumns = async () => {
+        onColumnsSelectRef.current = onColumnsSelect;
+    }, [onColumnsSelect]);
+
+    useEffect(() => {
+        const fetchColumns = async () => {
+            if (!tableName) return;
+
             setLoading(true);
             setError(null);
             try {
-                if (sourceType === 'CLICKHOUSE' && clickHouseConfig) {
-                    const schema = await getTableSchema(clickHouseConfig);
-                    setColumns(schema);
-                } else if (sourceType === 'FLAT_FILE' && fileData) {
-                    // For now, we'll use mock columns for file data
-                    const mockColumns = [
-                        { name: 'column1', type: 'String', nullable: true },
-                        { name: 'column2', type: 'String', nullable: true },
-                        { name: 'column3', type: 'String', nullable: true },
-                        { name: 'column4', type: 'String', nullable: true }
-                    ];
-                    setColumns(mockColumns);
+                const response = await fetch(`http://localhost:8081/api/ingestion/columns?tableName=${tableName}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(config),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch columns');
                 }
+
+                const data = await response.json();
+                setColumns(data);
+                // Select all columns by default
+                setSelectedColumns(data);
+                onColumnsSelectRef.current(data);
             } catch (err) {
-                setError(err instanceof Error ? err.message : 'Failed to load columns');
+                setError(err instanceof Error ? err.message : 'Failed to fetch columns');
             } finally {
                 setLoading(false);
             }
         };
 
-        loadColumns();
-    }, [sourceType, clickHouseConfig, fileData]);
+        if (config.host && config.port && config.database && tableName) {
+            fetchColumns();
+        }
+    }, [config, tableName]);
+
+    const handleToggle = (column: string) => {
+        const newSelected = selectedColumns.includes(column)
+            ? selectedColumns.filter((c) => c !== column)
+            : [...selectedColumns, column];
+        setSelectedColumns(newSelected);
+        onColumnsSelectRef.current(newSelected);
+    };
 
     const handleSelectAll = () => {
-        setSelectedColumns(columns.map(col => col.name));
-    };
-
-    const handleDeselectAll = () => {
-        setSelectedColumns([]);
-    };
-
-    const handleColumnToggle = (columnName: string) => {
-        setSelectedColumns(prev =>
-            prev.includes(columnName)
-                ? prev.filter(col => col !== columnName)
-                : [...prev, columnName]
-        );
-    };
-
-    const handleSubmit = () => {
-        if (selectedColumns.length === 0) {
-            setError('Please select at least one column');
-            return;
+        if (selectedColumns.length === columns.length) {
+            setSelectedColumns([]);
+            onColumnsSelectRef.current([]);
+        } else {
+            setSelectedColumns(columns);
+            onColumnsSelectRef.current(columns);
         }
-        onSelect(selectedColumns);
     };
-
-    if (loading) {
-        return (
-            <Box display="flex" justifyContent="center" alignItems="center" p={3}>
-                <CircularProgress />
-            </Box>
-        );
-    }
 
     return (
-        <Box>
-            <Box mb={2}>
-                <Typography variant="h6">Column Selection</Typography>
-                <Typography variant="body2" color="textSecondary">
-                    Select the columns you want to include in the ingestion process
-                </Typography>
-            </Box>
-
-            {error && (
-                <Box mb={2}>
-                    <Alert severity="error">{error}</Alert>
+        <Paper sx={{ p: 3, maxWidth: 500, mx: 'auto', mt: 3 }}>
+            <Typography variant="h6" gutterBottom>
+                Select Columns
+            </Typography>
+            {loading && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                    <CircularProgress />
                 </Box>
             )}
-
-            <Box mb={2}>
-                <Button
-                    variant="outlined"
-                    onClick={handleSelectAll}
-                    sx={{ mr: 1 }}
-                >
-                    Select All
-                </Button>
-                <Button
-                    variant="outlined"
-                    onClick={handleDeselectAll}
-                >
-                    Deselect All
-                </Button>
-            </Box>
-
-            <Box mb={3}>
-                <FormGroup>
-                    <Stack spacing={1}>
-                        {columns.map(column => (
-                            <FormControlLabel
-                                key={column.name}
-                                control={
-                                    <Checkbox
-                                        checked={selectedColumns.includes(column.name)}
-                                        onChange={() => handleColumnToggle(column.name)}
-                                    />
-                                }
-                                label={column.name}
-                            />
+            {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    {error}
+                </Alert>
+            )}
+            {!loading && !error && columns.length === 0 && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                    No columns found in the table.
+                </Alert>
+            )}
+            {!loading && !error && columns.length > 0 && (
+                <>
+                    <Button
+                        variant="outlined"
+                        onClick={handleSelectAll}
+                        sx={{ mb: 2 }}
+                    >
+                        {selectedColumns.length === columns.length ? 'Deselect All' : 'Select All'}
+                    </Button>
+                    <List>
+                        {columns.map((column) => (
+                            <ListItem key={column} disablePadding>
+                                <ListItemButton onClick={() => handleToggle(column)}>
+                                    <ListItemIcon>
+                                        <Checkbox
+                                            edge="start"
+                                            checked={selectedColumns.includes(column)}
+                                            tabIndex={-1}
+                                            disableRipple
+                                        />
+                                    </ListItemIcon>
+                                    <ListItemText primary={column} />
+                                </ListItemButton>
+                            </ListItem>
                         ))}
-                    </Stack>
-                </FormGroup>
-            </Box>
-
-            <Button
-                variant="contained"
-                color="primary"
-                onClick={handleSubmit}
-                disabled={selectedColumns.length === 0}
-            >
-                Continue
-            </Button>
-        </Box>
+                    </List>
+                </>
+            )}
+        </Paper>
     );
 };
 

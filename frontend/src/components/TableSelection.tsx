@@ -5,73 +5,49 @@ import {
     Paper,
     List,
     ListItem,
+    ListItemButton,
     ListItemText,
     Checkbox,
     Button,
     CircularProgress,
+    Alert,
 } from '@mui/material';
-import { ConnectionConfig, TableSchema } from '../types';
-import { getTables, getTableSchema } from '../services/api';
+import { ConnectionConfig } from '../types';
+import { getTables } from '../services/api';
 
 interface TableSelectionProps {
     config: ConnectionConfig;
-    onTableSelect: (tableName: string, schema: TableSchema) => void;
+    onTableSelect: (tableName: string) => void;
 }
 
-const TableSelection: React.FC<TableSelectionProps> = ({ config, onTableSelect }) => {
+const TableSelection = ({ config, onTableSelect }: TableSelectionProps) => {
     const [tables, setTables] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedTable, setSelectedTable] = useState<string | null>(null);
-    const [schema, setSchema] = useState<TableSchema | null>(null);
-    const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
 
     useEffect(() => {
         const fetchTables = async () => {
             setLoading(true);
             setError(null);
             try {
-                const tablesList = await getTables(config);
-                setTables(tablesList);
+                const data = await getTables(config);
+                setTables(data);
             } catch (err) {
-                setError('Failed to fetch tables');
-                console.error(err);
+                setError(err instanceof Error ? err.message : 'Failed to fetch tables');
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchTables();
+        if (config.host && config.port && config.database) {
+            fetchTables();
+        }
     }, [config]);
 
-    const handleTableSelect = async (tableName: string) => {
-        setLoading(true);
-        setError(null);
-        try {
-            const tableSchema = await getTableSchema({ ...config, tableName });
-            setSchema(tableSchema);
-            setSelectedTable(tableName);
-            setSelectedColumns(Object.keys(tableSchema));
-        } catch (err) {
-            setError('Failed to fetch table schema');
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleColumnToggle = (column: string) => {
-        setSelectedColumns(prev =>
-            prev.includes(column)
-                ? prev.filter(c => c !== column)
-                : [...prev, column]
-        );
-    };
-
-    const handleConfirm = () => {
-        if (selectedTable && schema) {
-            onTableSelect(selectedTable, schema);
-        }
+    const handleTableSelect = (tableName: string) => {
+        setSelectedTable(tableName);
+        onTableSelect(tableName);
     };
 
     if (loading) {
@@ -84,66 +60,37 @@ const TableSelection: React.FC<TableSelectionProps> = ({ config, onTableSelect }
 
     if (error) {
         return (
-            <Typography color="error" align="center" mt={4}>
+            <Alert severity="error" sx={{ mb: 2 }}>
                 {error}
-            </Typography>
+            </Alert>
+        );
+    }
+
+    if (tables.length === 0) {
+        return (
+            <Alert severity="info" sx={{ mb: 2 }}>
+                No tables found in the database.
+            </Alert>
         );
     }
 
     return (
         <Paper elevation={3} sx={{ p: 3, maxWidth: 800, mx: 'auto', mt: 4 }}>
             <Typography variant="h5" gutterBottom>
-                Select Table and Columns
+                Select Table
             </Typography>
-            <Box display="flex" gap={4} mt={2}>
-                <Box flex={1}>
-                    <Typography variant="h6" gutterBottom>
-                        Tables
-                    </Typography>
-                    <List>
-                        {tables.map(table => (
-                            <ListItem
-                                key={table}
-                                button
-                                onClick={() => handleTableSelect(table)}
-                                selected={selectedTable === table}
-                            >
-                                <ListItemText primary={table} />
-                            </ListItem>
-                        ))}
-                    </List>
-                </Box>
-                {schema && (
-                    <Box flex={1}>
-                        <Typography variant="h6" gutterBottom>
-                            Columns
-                        </Typography>
-                        <List>
-                            {Object.entries(schema).map(([column, type]) => (
-                                <ListItem key={column}>
-                                    <Checkbox
-                                        checked={selectedColumns.includes(column)}
-                                        onChange={() => handleColumnToggle(column)}
-                                    />
-                                    <ListItemText
-                                        primary={column}
-                                        secondary={type}
-                                    />
-                                </ListItem>
-                            ))}
-                        </List>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={handleConfirm}
-                            fullWidth
-                            sx={{ mt: 2 }}
+            <List>
+                {tables.map((table) => (
+                    <ListItem key={table} disablePadding>
+                        <ListItemButton
+                            selected={selectedTable === table}
+                            onClick={() => handleTableSelect(table)}
                         >
-                            Confirm Selection
-                        </Button>
-                    </Box>
-                )}
-            </Box>
+                            <ListItemText primary={table} />
+                        </ListItemButton>
+                    </ListItem>
+                ))}
+            </List>
         </Paper>
     );
 };

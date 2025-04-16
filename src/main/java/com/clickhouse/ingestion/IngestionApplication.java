@@ -7,12 +7,10 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @SpringBootApplication
-public class ClickHouseIngestionApplication {
-
+public class IngestionApplication {
     public static void main(String[] args) {
-        SpringApplication.run(ClickHouseIngestionApplication.class, args);
+        SpringApplication.run(IngestionApplication.class, args);
     }
-
     @Bean
     public WebMvcConfigurer corsConfigurer() {
         return new WebMvcConfigurer() {

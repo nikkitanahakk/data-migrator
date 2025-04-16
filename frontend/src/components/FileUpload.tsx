@@ -1,60 +1,58 @@
-import React, { useState } from 'react';
-import { Box, Button, Typography, Stack } from '@mui/material';
+import React, { useCallback } from 'react';
+import { Box, Button, Typography, Paper } from '@mui/material';
+import { useDropzone } from 'react-dropzone';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 
 interface FileUploadProps {
-    onUpload: (data: File) => void;
+    onUpload: (file: File) => void;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ onUpload }) => {
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files && event.target.files[0]) {
-            setSelectedFile(event.target.files[0]);
+const FileUpload = ({ onUpload }: FileUploadProps) => {
+    const onDrop = useCallback((acceptedFiles: File[]) => {
+        if (acceptedFiles.length > 0) {
+            onUpload(acceptedFiles[0]);
         }
-    };
+    }, [onUpload]);
 
-    const handleUpload = () => {
-        if (selectedFile) {
-            onUpload(selectedFile);
-        }
-    };
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: {
+            'text/csv': ['.csv'],
+        },
+        maxFiles: 1,
+    });
 
     return (
-        <Box>
+        <Paper sx={{ p: 3, maxWidth: 500, mx: 'auto' }}>
             <Typography variant="h6" gutterBottom>
-                Upload File
+                Upload CSV File
             </Typography>
-            <Stack spacing={2}>
-                <Button
-                    variant="outlined"
-                    component="label"
-                    size="large"
-                >
-                    Choose File
-                    <input
-                        type="file"
-                        hidden
-                        accept=".csv,.txt"
-                        onChange={handleFileChange}
-                    />
+            <Box
+                {...getRootProps()}
+                sx={{
+                    border: '2px dashed',
+                    borderColor: isDragActive ? 'primary.main' : 'grey.300',
+                    borderRadius: 1,
+                    p: 3,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    '&:hover': {
+                        borderColor: 'primary.main',
+                    },
+                }}
+            >
+                <input {...getInputProps()} />
+                <UploadFileIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+                <Typography>
+                    {isDragActive
+                        ? 'Drop the CSV file here'
+                        : 'Drag and drop a CSV file here, or click to select'}
+                </Typography>
+                <Button variant="outlined" sx={{ mt: 2 }}>
+                    Select File
                 </Button>
-                {selectedFile && (
-                    <>
-                        <Typography>
-                            Selected file: {selectedFile.name}
-                        </Typography>
-                        <Button
-                            variant="contained"
-                            onClick={handleUpload}
-                            size="large"
-                        >
-                            Upload
-                        </Button>
-                    </>
-                )}
-            </Stack>
-        </Box>
+            </Box>
+        </Paper>
     );
 };
 

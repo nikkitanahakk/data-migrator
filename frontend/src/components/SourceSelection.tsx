@@ -1,33 +1,37 @@
 import React from 'react';
-import { Box, Button, Typography, Stack } from '@mui/material';
-import { SourceType } from '../types/index.ts';
+import { Box, Button, Typography } from '@mui/material';
+import StorageIcon from '@mui/icons-material/Storage';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import { SourceType } from '../types';
 
 interface SourceSelectionProps {
     onSelect: (type: SourceType) => void;
 }
 
-const SourceSelection: React.FC<SourceSelectionProps> = ({ onSelect }) => {
+const SourceSelection = ({ onSelect }: SourceSelectionProps) => {
     return (
-        <Box>
-            <Typography variant="h6" gutterBottom>
+        <Box sx={{ textAlign: 'center', p: 3 }}>
+            <Typography variant="h5" gutterBottom>
                 Select Data Source
             </Typography>
-            <Stack spacing={2} direction="row" justifyContent="center">
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 4 }}>
                 <Button
-                    variant="contained"
-                    onClick={() => onSelect('CLICKHOUSE')}
-                    size="large"
+                    variant="outlined"
+                    startIcon={<StorageIcon />}
+                    onClick={() => onSelect('clickhouse')}
+                    sx={{ p: 2 }}
                 >
                     ClickHouse Database
                 </Button>
                 <Button
-                    variant="contained"
-                    onClick={() => onSelect('FLAT_FILE')}
-                    size="large"
+                    variant="outlined"
+                    startIcon={<UploadFileIcon />}
+                    onClick={() => onSelect('file')}
+                    sx={{ p: 2 }}
                 >
-                    Flat File
+                    CSV File
                 </Button>
-            </Stack>
+            </Box>
         </Box>
     );
 };

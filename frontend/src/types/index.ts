@@ -1,4 +1,22 @@
-export type SourceType = 'CLICKHOUSE' | 'FLAT_FILE';
+export interface ConnectionConfig {
+    host: string;
+    port: number;
+    database: string;
+    username: string;
+    password: string;
+}
+
+export interface TableSchema {
+    [columnName: string]: string;
+}
+
+export interface ColumnInfo {
+    name: string;
+    type: string;
+}
+
+export type SourceType = 'clickhouse' | 'file';
+
 export type DestinationType = 'CLICKHOUSE' | 'FLAT_FILE';
 
 export interface ClickHouseConfig {
@@ -10,14 +28,9 @@ export interface ClickHouseConfig {
 }
 
 export interface FileData {
-    file: File;
-    content: string;
-}
-
-export interface ColumnInfo {
-    name: string;
-    type: string;
-    nullable: boolean;
+    fileName: string;
+    columns: string[];
+    preview: any[];
 }
 
 export interface IngestionConfig {
@@ -51,11 +64,6 @@ export interface IngestionRequest {
     destinationType: DestinationType;
 }
 
-export interface TableSchema {
-    name: string;
-    columns: ColumnInfo[];
-}
-
 export interface PreviewData {
     headers: string[];
     rows: Record<string, any>[];
@@ -65,4 +73,14 @@ export interface IngestionStatus {
     status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
     progress: number;
     error?: string;
+}
+
+export type Direction = 'clickhouse-to-file' | 'file-to-clickhouse';
+
+export interface PreviewDataProps {
+    direction: Direction;
+    config: ConnectionConfig;
+    tableName: string;
+    selectedColumns: string[];
+    fileData: FileData | null;
 } 
